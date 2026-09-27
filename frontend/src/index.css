@@ -1,0 +1,361 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
+@layer base {
+  :root {
+    --bg-primary: #fcfcfd;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f8fafc;
+    --border-light: #eef2f6;
+    --border-subtle: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --gauge-track: #f1f5f9;
+    color-scheme: light;
+  }
+
+  .dark, [data-theme="dark"] {
+    --bg-primary: #090d16;
+    --bg-surface: #111827;
+    --bg-subtle: #1e293b;
+    --border-light: #1f293d;
+    --border-subtle: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --gauge-track: #1e293b;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--bg-subtle);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    text-align: left !important;
+  }
+}
+
+/* =========================================================
+   DARK THEME ELEVATION & COMPONENT STYLES
+   ========================================================= */
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+}
+
+/* Base application wrapper */
+.dark .min-h-screen {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+}
+
+/* Surface backgrounds */
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-\[\#f8fafc\],
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-50\/90 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #162032 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+/* Primary and secondary text */
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Borders and dividers */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/90,
+.dark .border-slate-300 {
+  border-color: #1f293d !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1f293d !important;
+}
+
+/* Hover effects */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1a2538 !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #273549 !important;
+}
+
+.dark .hover\:text-slate-900:hover {
+  color: #ffffff !important;
+}
+
+.dark .hover\:text-slate-700:hover {
+  color: #f1f5f9 !important;
+}
+
+/* Header & Navigation in dark mode */
+.dark header {
+  background-color: rgba(17, 24, 39, 0.85) !important;
+  border-color: #1f293d !important;
+}
+
+.dark aside {
+  background-color: #0f172a !important;
+  border-color: #1f293d !important;
+}
+
+.dark aside .border-slate-100,
+.dark aside .border-b,
+.dark aside .border-t {
+  border-color: #1f293d !important;
+}
+
+.dark aside .bg-slate-50 {
+  background-color: #172235 !important;
+}
+
+/* Active navigation item */
+.dark .bg-blue-50\/80,
+.dark .bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.22) !important;
+}
+
+/* Inputs, textareas, and selects */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="search"],
+.dark input[type="number"],
+.dark input[type="password"],
+.dark textarea,
+.dark select {
+  background-color: #162032 !important;
+  border-color: #2b3952 !important;
+  color: #f8fafc !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Modals and Dialogs */
+.dark .fixed.inset-0.bg-slate-900\/40,
+.dark .fixed.inset-0.bg-slate-900\/50,
+.dark .fixed.inset-0.bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Gemini Copilot Drawer */
+.dark aside[aria-label="Gemini AI Sidebar"] {
+  background-color: #0f172a !important;
+  border-color: #1f293d !important;
+}
+
+.dark aside[aria-label="Gemini AI Sidebar"] .bg-slate-50,
+.dark aside[aria-label="Gemini AI Sidebar"] .bg-slate-50\/60 {
+  background-color: #162032 !important;
+}
+
+.dark aside[aria-label="Gemini AI Sidebar"] textarea {
+  background-color: #162032 !important;
+  border-color: #2b3952 !important;
+  color: #f8fafc !important;
+}
+
+/* Custom Scrollbars in Dark Mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* =========================================================
+   ATS RESUME BUILDER PREVIEW ISOLATION
+   Preserves real white paper & black text for resume output
+   ========================================================= */
+.dark #resume-preview-sheet,
+.dark #resume-preview-sheet * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.dark #resume-preview-sheet a {
+  color: #000000 !important;
+}
+
+.dark #resume-preview-sheet hr,
+.dark #resume-preview-sheet .section-title {
+  border-color: #000000 !important;
+}
+
+.dark .resume-sheet-wrapper {
+  background-color: #0b0f19 !important;
+}
+
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Subtle transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pulse badge */
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-subtle {
+  animation: pulseSubtle 2.5s infinite ease-in-out;
+}
+
+/* TeX / LaTeX Resume Typography */
+.font-latex-serif {
+  font-family: "Latin Modern Roman", "Computer Modern Roman", "CMU Serif", "Georgia", "Cambria", "Times New Roman", Times, serif;
+}
+
+.font-latex-sans {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Print Styles for Overleaf ATS Resume Export */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  header, aside, nav, .no-print, .editor-panel {
+    display: none !important;
+  }
+
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .resume-sheet-wrapper {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #resume-preview-sheet {
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 0.4in 0.42in;
+  }
+}
+
