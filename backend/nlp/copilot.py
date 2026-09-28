@@ -572,7 +572,7 @@ def call_gemini_chat(
             messages=messages,
             system_instruction=system_prompt,
             temperature=0.2,
-            max_output_tokens=450
+            max_output_tokens=600
         )
     except Exception as e:
         print(f"[Copilot Gemini] Chat call failed after retries: {e}")
@@ -587,11 +587,29 @@ def handle_copilot_chat(
 ) -> str:
     """
     Main entry point for AI Career Copilot.
-    Tries OpenAI or Gemini if configured; falls back reliably to the intelligent
-    local AI Career Copilot engine.
+    Tries OpenAI or Gemini if configured; falls back reliably to the local engine only if offline.
     """
     openai_key = os.getenv("OPENAI_API_KEY")
     gemini_key = os.getenv("GEMINI_API_KEY")
+
+    # Format auto-audit commands into clear, real-time audit prompts for the AI
+    cleaned_query = (query or "").strip()
+    q_lower = cleaned_query.lower()
+
+    if q_lower.startswith("auto-audit page:"):
+        page_name = cleaned_query.split(":", 1)[1].strip()
+        effective_query = (
+            f"Please conduct an in-depth audit of my resume specifically focusing on the '{page_name}' perspective. "
+            f"Ground your evaluation directly in my uploaded resume text, point out specific strengths, "
+            f"call out missing keywords or gaps, and provide 3 concrete, high-impact improvements."
+        )
+    elif "auto-audit" in q_lower or "audit this page" in q_lower:
+        effective_query = (
+            "Please perform a live, comprehensive audit of my resume. "
+            "Highlight what stands out, where my ATS or skill gaps are, and what 3 priority actions I should take."
+        )
+    else:
+        effective_query = cleaned_query
 
     # If an external LLM key is available, formulate system prompt with rich resume context
     if openai_key or gemini_key:
@@ -602,7 +620,7 @@ def handle_copilot_chat(
             score = analysis_data.get("overall_score", 80)
             target = analysis_data.get("target_role", "Software Engineer")
             filename = analysis_data.get("filename", "Resume.pdf")
-            raw_text = analysis_data.get("resume_text", "")[:2000]
+            raw_text = analysis_data.get("resume_text", "")[:2500]
 
             resume_summary = f"""
 Candidate Analyzed Resume Details:
@@ -620,21 +638,34 @@ Candidate Analyzed Resume Details:
 You are a warm, highly professional career advisor, technical recruiter, and resume mentor.
 Always ground your answers in the candidate's actual resume data provided below.
 Provide structured, actionable markdown answers with bullet points, bold keywords, and encouraging advice.
+Never give static canned responses; tailor every insight directly to the candidate's specific skills and target role.
 {resume_summary}
 """
+        # Build conversational history ensuring current query is the final message
+        convo_messages: List[Dict[str, str]] = []
+        if messages:
+            for m in messages:
+                content = (m.get("content") or "").strip()
+                role = "assistant" if m.get("role") in ["assistant", "model"] else "user"
+                if content:
+                    convo_messages.append({"role": role, "content": content})
+
+        if not convo_messages or convo_messages[-1].get("content") != effective_query:
+            convo_messages.append({"role": "user", "content": effective_query})
+
         # Try OpenAI first if present
         if openai_key:
-            res = call_openai_chat(openai_key, messages, system_prompt)
+            res = call_openai_chat(openai_key, convo_messages, system_prompt)
             if res:
                 return res
 
         # Try Gemini if present
         if gemini_key:
-            res = call_gemini_chat(gemini_key, messages, system_prompt)
+            res = call_gemini_chat(gemini_key, convo_messages, system_prompt)
             if res:
                 return res
 
-    # Grounded intelligent local engine
+    # Grounded intelligent local engine fallback only if external LLMs fail
     return generate_intelligent_copilot_response(
         query=query,
         messages=messages,

@@ -16,15 +16,13 @@ if not logger.handlers:
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-# High-speed verified active models ranked by latency (1.39s vs 6.5s)
+# High-speed verified active models ranked by reliability and latency
 DEFAULT_MODELS_CHAIN = [
+    "gemini-flash-latest",
     "gemini-flash-lite-latest",
+    "gemini-3.8-flash",
     "gemini-3.5-flash-lite",
 ]
-
-# Fast in-memory cache for instant answers (0ms latency for repeat questions)
-_CHAT_CACHE: Dict[str, str] = {}
-_MAX_CACHE_ENTRIES = 100
 
 class GeminiClientError(Exception):
     """Base exception for Gemini client errors."""
@@ -55,7 +53,7 @@ def validate_api_key() -> str:
 
 def get_model_chain() -> List[str]:
     """Retrieve ordered model sequence starting with high-speed preference."""
-    env_model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip()
+    env_model = os.getenv("GEMINI_MODEL", "gemini-flash-latest").strip()
     chain = []
     if env_model:
         chain.append(env_model)
@@ -201,9 +199,15 @@ def generate_structured_json(
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=12) as resp:
+                with urllib.request.urlopen(req, timeout=45) as resp:
                     res_data = json.loads(resp.read().decode("utf-8"))
-                    return res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    candidates = res_data.get("candidates", [])
+                    if not candidates:
+                        raise GeminiParsingError(f"No candidates returned from Gemini: {res_data}")
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if not parts:
+                        raise GeminiParsingError(f"Candidate content missing parts: {candidates[0]}")
+                    return parts[0].get("text", "")
 
             rest_text = _execute_with_exponential_backoff(_call_rest, max_retries=2)
             if rest_text:
@@ -223,7 +227,7 @@ def generate_structured_json(
 
                 client = genai.Client(
                     api_key=api_key,
-                    http_options=types.HttpOptions(timeout=15.0)
+                    http_options=types.HttpOptions(timeout=35.0)
                 )
 
                 config_kwargs: Dict[str, Any] = {
@@ -263,11 +267,11 @@ def generate_chat_response(
     messages: List[Dict[str, str]],
     system_instruction: str,
     temperature: float = 0.2,
-    max_output_tokens: int = 450
+    max_output_tokens: int = 600
 ) -> str:
     """
-    Lightning-fast Gemini chat completion generator with LRU cache,
-    direct REST primary path (1-2s latency), and multi-model fallback.
+    Real-time dynamic Gemini chat generator (no cached or stored responses).
+    Direct REST primary path with multi-model fallback.
     """
     api_key = validate_api_key()
     models = get_model_chain()
@@ -282,23 +286,17 @@ def generate_chat_response(
             formatted_convo.append(f"{role}: {content}")
     conversation_text = "\n".join(formatted_convo) if formatted_convo else "Hello"
 
-    # Fast Cache Lookup: check if recent identical query exists
-    cache_key = f"{conversation_text.strip().lower()}::{system_instruction[:80]}"
-    if cache_key in _CHAT_CACHE:
-        logger.info("Instant 0ms cache hit for chat query.")
-        return _CHAT_CACHE[cache_key]
-
     # Enforce concise, fast instruction
     speed_instruction = (
         f"{system_instruction.strip()}\n\n"
-        "SPEED & CONCISENESS RULE: Be direct, structured, and fast. "
-        "Provide high-impact bullet points and bold keywords. Avoid unnecessary pleasantries or filler."
+        "SPEED & CONCISENESS RULE: Be direct, structured, and helpful. "
+        "Provide high-impact bullet points and bold keywords. Never give generic boilerplate."
     )
 
     for model_name in models:
         logger.info("Attempting fast chat completion with model: %s", model_name)
 
-        # 1. High-Speed Direct REST (Primary Fast-Path: 1.4s - 2.0s)
+        # 1. High-Speed Direct REST (Primary Fast-Path)
         try:
             def _call_chat_rest():
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
@@ -334,18 +332,20 @@ def generate_chat_response(
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                with urllib.request.urlopen(req, timeout=25) as resp:
                     res_data = json.loads(resp.read().decode("utf-8"))
-                    return res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    candidates = res_data.get("candidates", [])
+                    if not candidates:
+                        raise GeminiParsingError(f"No candidates returned: {res_data}")
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if not parts:
+                        raise GeminiParsingError(f"Candidate content missing parts: {candidates[0]}")
+                    return parts[0].get("text", "")
 
             text = _execute_with_exponential_backoff(_call_chat_rest, max_retries=1)
             if text:
                 ans = text.strip()
-                # Store in fast cache
-                if len(_CHAT_CACHE) > _MAX_CACHE_ENTRIES:
-                    _CHAT_CACHE.pop(next(iter(_CHAT_CACHE)))
-                _CHAT_CACHE[cache_key] = ans
-                logger.info("Fast chat answered in sub-2s via REST from %s", model_name)
+                logger.info("Fast chat answered via REST from %s", model_name)
                 return ans
 
         except Exception as rest_err:
@@ -359,7 +359,7 @@ def generate_chat_response(
 
                 client = genai.Client(
                     api_key=api_key,
-                    http_options=types.HttpOptions(timeout=15.0)
+                    http_options=types.HttpOptions(timeout=25.0)
                 )
                 config = types.GenerateContentConfig(
                     system_instruction=speed_instruction,
@@ -376,11 +376,7 @@ def generate_chat_response(
 
                 res = _execute_with_exponential_backoff(_call_chat_sdk, max_retries=1)
                 if res and hasattr(res, "text") and res.text:
-                    ans = res.text.strip()
-                    if len(_CHAT_CACHE) > _MAX_CACHE_ENTRIES:
-                        _CHAT_CACHE.pop(next(iter(_CHAT_CACHE)))
-                    _CHAT_CACHE[cache_key] = ans
-                    return ans
+                    return res.text.strip()
 
             except Exception as e:
                 logger.error("SDK chat also failed for %s: %s", model_name, e)

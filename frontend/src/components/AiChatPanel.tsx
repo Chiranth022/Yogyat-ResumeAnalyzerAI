@@ -109,7 +109,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     }
   }, [isOpen, messages]);
 
-  // Proactive Auto-Briefing: when a new resume is analyzed, automatically deliver an executive briefing!
+  // Proactive Auto-Briefing: when a new resume is analyzed, deliver an executive briefing from actual analysis data
   useEffect(() => {
     if (currentAnalysis && currentAnalysis.id && currentAnalysis.id !== lastAnalyzedIdRef.current) {
       lastAnalyzedIdRef.current = currentAnalysis.id;
@@ -118,24 +118,35 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       const missingSkills = currentAnalysis.skills_analysis?.missing_skills || [];
       const score = currentAnalysis.overall_score || 80;
       const targetRole = currentAnalysis.target_role || 'Software Engineer';
-      const critGap = missingSkills[0] || 'Docker / Cloud Hosting';
+      const critGap = missingSkills[0] || '';
+
+      const strengthsList = (currentAnalysis.strengths && currentAnalysis.strengths.length > 0)
+        ? currentAnalysis.strengths.slice(0, 3).map((s: string) => `* ${s}`).join('\n')
+        : (skillsFound.length > 0 ? `* Found ${skillsFound.length} key skills including **${skillsFound.slice(0, 4).join(', ')}**` : `* Clean structural layout and readable sections.`);
+
+      const topImprovement = currentAnalysis.improvements && currentAnalysis.improvements.length > 0
+        ? currentAnalysis.improvements[0]
+        : null;
+
+      const priorityActionText = topImprovement
+        ? `**${topImprovement.title}** (${topImprovement.priority} Priority): ${topImprovement.suggested_action || topImprovement.explanation}`
+        : (critGap ? `Strengthen verified experience in **\`${critGap}\`** through relevant projects or achievements.` : 'Incorporate more quantifiable metrics and impact metrics into your project bullets.');
 
       const autoBriefingMessage: Message = {
         id: `auto-briefing-${Date.now()}`,
         role: 'assistant',
-        content: `### ✨ Automated Executive Briefing: ${currentAnalysis.filename}
+        content: `### ✨ Analysis Overview: ${currentAnalysis.filename}
 
 * **🎯 Target Role**: **${targetRole}**
-* **⭐ Overall Readiness**: **${score}/100** (ATS Compatibility: **${currentAnalysis.kpis?.ats_compatibility || 85}%**, Role Match: **${currentAnalysis.kpis?.job_match || 75}%**)
+* **⭐ Overall Readiness**: **${score}/100** (ATS Compatibility: **${currentAnalysis.kpis?.ats_compatibility ?? 85}%**, Role Match: **${currentAnalysis.kpis?.job_match ?? 75}%**)
 
 #### 🌟 Key Strengths:
-* Strong foundation in **${skillsFound.slice(0, 4).join(', ') || 'Core Engineering'}**
-* Clean structural parsing with zero unreadable fonts or artifacts
+${strengthsList}
 
 #### ⚡ #1 Priority Action:
-* Bridge your gap in **\`${critGap}\`** by adding a containerized Docker deployment or cloud CI/CD workflow to your flagship project.
+* ${priorityActionText}
 
-💡 *I am docked on your screen and will provide live insights as you navigate between Dashboard, Skills, Builder, and Job Match.*`,
+💡 *Ask me any question below for live, real-time guidance powered by Gemini AI!*`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -153,15 +164,15 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const pageContext = useMemo(() => {
     const role = currentAnalysis?.target_role || 'Software Engineer';
     const score = currentAnalysis?.overall_score || 82;
-    const missing = currentAnalysis?.skills_analysis?.missing_skills || ['Docker', 'AWS', 'Redis'];
+    const missing = currentAnalysis?.skills_analysis?.missing_skills || [];
 
     switch (currentTab) {
       case 'dashboard':
         return {
           title: 'Dashboard Overview',
           badge: 'Executive View',
-          insight: `Your resume is at ${score}% readiness. 3 quick wins can raise it into the top 10% percentile.`,
-          autoPrompt: 'auto-audit page:dashboard',
+          insight: `Your resume is at ${score}% readiness. 3 quick wins can raise it into the top percentile.`,
+          autoPrompt: 'Analyze my current resume scores and tell me the top 3 quick wins to raise my readiness.',
           chips: [
             '⚡ Top 3 quick wins',
             '📈 How to reach 90+ ATS score?',
@@ -172,8 +183,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         return {
           title: 'Resume Ingestion',
           badge: 'ATS Scanner',
-          insight: 'Standard single-column PDF or DOCX format guarantees 99.4% parser accuracy across Workday & Greenhouse.',
-          autoPrompt: 'auto-audit page:upload',
+          insight: 'Standard single-column PDF or DOCX format guarantees high parser accuracy across Workday & Greenhouse.',
+          autoPrompt: 'What resume formatting rules should I follow to avoid ATS parsing errors?',
           chips: [
             'What file formats parse best?',
             'How do ATS scanners handle tables?',
@@ -183,9 +194,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       case 'builder':
         return {
           title: 'ATS Resume Builder',
-          badge: 'LaTeX Overleaf',
+          badge: 'LaTeX & Export',
           insight: 'Every bullet point should follow Google XYZ format: Accomplished [X], measured by [Y], by doing [Z].',
-          autoPrompt: 'auto-audit page:builder',
+          autoPrompt: 'How can I rewrite my experience bullets to follow the Google XYZ impact format?',
           chips: [
             '⚡ Generate summary for my stack',
             'Convert bullet to Google XYZ format',
@@ -196,8 +207,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         return {
           title: 'Resume Diagnostics',
           badge: 'Deep Audit',
-          insight: `ATS Compatibility is ${currentAnalysis?.kpis?.ats_compatibility || 85}%. Check formatting and quantifiable metric coverage.`,
-          autoPrompt: 'auto-audit page:analysis',
+          insight: `ATS Compatibility is ${currentAnalysis?.kpis?.ats_compatibility || 85}%. Review section breakdown and recommendations.`,
+          autoPrompt: 'Please perform a deep audit on my resume. What is my weakest section and how do I fix it?',
           chips: [
             '⚡ How can I improve my resume?',
             'Explain ATS score deductions',
@@ -208,8 +219,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         return {
           title: 'Job Match & Alignment',
           badge: 'Role Fit',
-          insight: `Role fit is ${currentAnalysis?.kpis?.job_match || 78}%. 3 conceptual semantic matches identified.`,
-          autoPrompt: 'auto-audit page:job-match',
+          insight: `Role fit is ${currentAnalysis?.kpis?.job_match || 78}%. Review matched competencies and gaps.`,
+          autoPrompt: 'How can I tailor my resume to close the gap for my target role?',
           chips: [
             '⚡ How to bridge the role gap?',
             'Compare against Software Engineer JD',
@@ -220,8 +231,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         return {
           title: 'Skills Radar',
           badge: 'Skill Gap',
-          insight: `Identified ${missing.length} missing competencies. Priority: ${missing[0] || 'Docker'} & ${missing[1] || 'AWS'}.`,
-          autoPrompt: 'auto-audit page:skills',
+          insight: `Identified ${missing.length} missing competencies. Priority: ${missing[0] || 'Core Technologies'} & ${missing[1] || 'Domain Tools'}.`,
+          autoPrompt: 'Based on my resume and target role, what are my biggest skill gaps and which should I prioritize learning first?',
           chips: [
             'What skills am I missing?',
             'Which one should I learn first?',
@@ -232,8 +243,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         return {
           title: 'AI Recommendations',
           badge: 'Smart Rewrites',
-          insight: 'Applying the 2 high-priority action cards will directly resolve missing role keywords.',
-          autoPrompt: 'auto-audit page:suggestions',
+          insight: 'Applying the high-priority action cards will directly resolve missing role keywords.',
+          autoPrompt: 'Please give me 3 specific bullet point rewrites for my resume using high-impact action verbs and metrics.',
           chips: [
             'Apply all high-priority rewrites',
             'Give me before/after bullet rewrites',
